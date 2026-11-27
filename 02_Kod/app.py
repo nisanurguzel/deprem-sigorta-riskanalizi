@@ -64,7 +64,7 @@ if ozellik is not None:
 st.sidebar.header("Sütun eşleştirme")
 st.sidebar.caption("Otomatik bulundu. Yanlışsa buradan değiştirin.")
 IL = sec(df, "İl sütunu", ["il", "province", "sehir"])
-SKOR = sec(df, "Risk skoru / segment (1-5)", ["risk_skor", "skor", "segment", "risk", "kume", "cluster"], True)
+SKOR = sec(df, "Risk skoru / segment (1-5)", ["risk_skoru"], True)
 NUFUS = sec(df, "Nüfus", ["nufus", "pop"], True)
 SAYI = sec(df, "Deprem sayısı", ["sayi", "count", "adet", "n_"], True)
 MAXM = sec(df, "Maks. büyüklük", ["max", "maks"], True)
@@ -82,7 +82,7 @@ df["risk_1_5"] = s.round().clip(1, 5).astype(int)
 # ---------------- Prim formülü ----------------
 st.sidebar.header("Prim varsayımları")
 MIN_K, MAX_K = 1.00, 1.60
-MEVCUT = st.sidebar.number_input("Mevcut (varsayılan) prim katsayısı", 0.80, 2.00, 1.00, 0.05)
+MEVCUT = st.sidebar.number_input("Mevcut (varsayılan) prim katsayısı", 0.80, 2.00, 1.30, 0.05)
 
 
 def baz_katsayi(skor):
@@ -162,15 +162,10 @@ with t2:
     if NUFUS: c3.metric("Nüfus", f"{satir[NUFUS]:,.0f}")
     st.write("Tüm özellikler")
     st.dataframe(satir.drop(["fark"]).astype(str).to_frame("değer"))
-    if deprem is not None:
-        il_d = sutun_bul(deprem, ["il", "province", "sehir"])
-        zm = sutun_bul(deprem, ["time", "tarih", "zaman"])
-        mg = sutun_bul(deprem, ["mag"])
-        if il_d and zm and mg:
-            gecmis = deprem[deprem[il_d].astype(str) == il].copy()
-            gecmis[zm] = pd.to_datetime(gecmis[zm], errors="coerce")
-            st.write("Geçmiş olaylar (büyükten küçüğe)")
-            st.dataframe(gecmis.sort_values(mg, ascending=False).head(20))
+        if deprem is not None and "place" in deprem.columns:
+        gecmis = deprem[deprem["place"].astype(str).map(norm).str.contains(norm(il), na=False)]
+        st.write("Yer bilgisinde ilin adı geçen en büyük 20 deprem (yaklaşık eşleştirme)")
+        st.dataframe(gecmis.sort_values("mag", ascending=False).head(20))
 
 with t3:
     st.subheader("Prim katsayısı hesaplayıcı")
